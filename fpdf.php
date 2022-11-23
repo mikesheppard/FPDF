@@ -881,6 +881,12 @@ function Image($file, $x=null, $y=null, $w=0, $h=0, $type='', $link='')
 			$type = substr($file,$pos+1);
 		}
 		$type = strtolower($type);
+		
+		// Amazon Signed URLs can have other get parameters which messes with the type
+		if (strpos($type, '?') !== false) {
+			$type = substr($type, 0, strpos($type, '?'));
+		}
+		
 		if($type=='jpeg')
 			$type = 'jpg';
 		$mtd = '_parse'.$type;
