@@ -14,8 +14,14 @@ or you can include the following in your composer.json file:
 
 ```json
 {
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/mikesheppard/FPDF.git"
+        }
+    ],
     "require": {
-        "setasign/fpdf": "^1.8"
+        "mikesheppard/fpdf": "1.1"
     }
 }
 ```
