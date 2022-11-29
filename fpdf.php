@@ -887,6 +887,12 @@ function Image($file, $x=null, $y=null, $w=0, $h=0, $type='', $link='')
 			$type = substr($type, 0, strpos($type, '?'));
 		}
 		
+		if (!$this->imageIntegrityCheck($file, $type)){
+			//this image either cannot be opened or failed the integrity check
+			//return and do not attempt to render image.
+			return false;
+		}
+		
 		if($type=='jpeg')
 			$type = 'jpg';
 		$mtd = '_parse'.$type;
@@ -936,6 +942,107 @@ function Image($file, $x=null, $y=null, $w=0, $h=0, $type='', $link='')
 		$this->Link($x,$y,$w,$h,$link);
 }
 
+
+
+/*
+* Added by danielB
+* this is called by Image() so DO NOT call this before it also.
+*/
+function imageIntegrityCheck($file, $extension)
+{
+	$extension 	= strtolower($extension);
+	$pos 		= strrpos($extension,'?');//checking for appended cache dodging string
+	if($pos){
+		$extension = substr($extension, 0, $pos);
+	}
+	$opts=array(
+	    "ssl"=>array(
+	        "verify_peer"=>true,
+	        "verify_peer_name"=>true,
+	    ),
+	);  
+	$f = fopen($file,'rb',false, stream_context_create($this->ssl_opts));
+	if(!$f){
+		// could not open file
+		return false;
+	}
+
+	$file_type_sig = array();
+
+	switch ($extension) {
+		case 'gif':
+			// The string "GIF87a", a GIF signature.
+            $file_type_sig[] = array(
+    			'content_sig' => chr(71).chr(73).chr(70).chr(56).chr(55).chr(97),
+    			'sig_length'  => 6
+    		);
+
+    		// The string "GIF89a", a GIF signature. 
+    		$file_type_sig[] = array(
+    			'content_sig' => chr(71).chr(73).chr(70).chr(56).chr(57).chr(97),
+    			'sig_length'  => 6
+    		);
+            break;
+        case 'jpg':
+        case 'jpeg':
+            $file_type_sig[] = array(
+    			'content_sig' => chr(255).chr(216).chr(255),
+    			'sig_length'  => 3
+    		);
+            break;
+        case 'png':
+        	$file_type_sig[] = array(
+    			'content_sig' => chr(137).'PNG'.chr(13).chr(10).chr(26).chr(10),
+    			'sig_length'  => 8
+    		);
+            break;
+//FPDF doesn't support bmp
+      //   case 'bmp':
+      //       $file_type_sig[] = array(
+    		// 	'content_sig' => chr(66).chr(77),
+    		// 	'sig_length'  => 2
+    		// );
+      //       break;
+//FPDF doesn't support tiff
+      //   case 'tif': 
+      //   case 'tiff':
+      //   	//little endian format 
+      //       $file_type_sig[] = array(
+    		// 	'content_sig' => chr(73).chr(73).chr(42).chr(0),
+    		// 	'sig_length'  => 4
+    		// );
+
+      //       //big endian format 
+    		// $file_type_sig[] = array(
+    		// 	'content_sig' => chr(77).chr(77).chr(0).chr(42),
+    		// 	'sig_length'  => 4
+    		// );
+      //       break;
+        default:
+        	// unsupported image integrity check let fpdf handle as usual
+        	fclose($f);
+        	return true;
+        	break;
+	}
+
+	$actual_file_sig = '';
+	foreach ($file_type_sig as $signature) {
+		if($actual_file_sig == ''){
+			$actual_file_sig = $this->_readstream($f, $signature['sig_length']);
+			//done this way as $f from aws doesnt support seeking for rewind()
+		}	
+
+		if($actual_file_sig == $signature['content_sig']){
+			fclose($f);
+			return true;
+		}
+	}
+	
+	//content signature does not match file extension!!!
+	fclose($f);
+	return false;
+}	
+	
 function GetPageWidth()
 {
 	// Get current page width
