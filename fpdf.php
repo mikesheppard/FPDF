@@ -961,7 +961,7 @@ function imageIntegrityCheck($file, $extension)
 	        "verify_peer_name"=>true,
 	    ),
 	);  
-	$f = fopen($file,'rb',false, stream_context_create($this->ssl_opts));
+	$f = fopen($file,'rb',false, stream_context_create($opts));
 	if(!$f){
 		// could not open file
 		return false;
